@@ -24,6 +24,12 @@ namespace Lut
 
 		template <typename Arr>
 		explicit ColorRgb(const Arr (&arr) [3]) : R(arr[0]), G(arr[1]), B(arr[2]) {}
+
+		static const ColorRgb<T>& Zero()
+		{
+			static ColorRgb<T> zero(0);
+			return zero;
+		}
 	};
 
 	template <typename Impl>

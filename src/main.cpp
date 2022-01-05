@@ -25,7 +25,7 @@ const Lut::CubeLut::Row& GetPix(const Lut::Table3D& tab, const int64_t b, const 
     if (std::max(b, std::max(g, r)) >= tab.Length() ||
         std::min(b, std::min(g, r)) < 0.)
     {
-        return { 0, 0, 0 };
+        return Lut::CubeLut::Row::Zero();
     }
     return tab.At(r, g, b);
 }
@@ -82,7 +82,7 @@ void ApplyLut(const std::filesystem::path& in, const std::filesystem::path& out,
 		? std::get<Lut::Table1D>(tab).Length()
 		: std::get<Lut::Table3D>(tab).Length());
 
-#define UseExecution
+//#define UseExecution
 
     std::for_each(
 #ifdef UseExecution
@@ -90,8 +90,8 @@ void ApplyLut(const std::filesystem::path& in, const std::filesystem::path& out,
 #endif
         rng.begin(), rng.end(), [&](const auto i)
         {
-            const auto x = i / img.rows;
-            const auto y = i % img.cols;
+            const auto x = i / img.cols;
+            const auto y = i - x * img.cols;
 
             auto [biR, giR, riR] = img.at<VecType>(x, y).val;
             FloatType bi = biR / 255., gi = giR / 255., ri = riR / 255.;
@@ -124,9 +124,9 @@ void ApplyLut(const std::filesystem::path& in, const std::filesystem::path& out,
 
 void Test()
 {
-    const std::filesystem::path& f1 = R"(F:\Cloth.std.png)";
+    const std::filesystem::path& f1 = R"(Z:\Evil_Succubus.png)";
 	//const std::filesystem::path& f2 = R"(F:\Cloth.ff.png)";
-    const std::filesystem::path& f2 = R"(F:\test.out.png)";
+    const std::filesystem::path& f2 = R"(Z:\Evil_Succubus.out.png)";
 
     const auto img1 = cv::imread(f1.string());
     const auto img2 = cv::imread(f2.string());
@@ -136,7 +136,7 @@ void Test()
 	std::vector<int> devs{};
 	for (const auto i: std::views::iota(0, img1.cols * img2.rows))
 	{
-		for (int64_t x = i / img1.rows, y = i % img1.cols; const auto ii : std::views::iota(0, 3))
+		for (int64_t x = i / img1.cols, y = i - x * img1.cols; const auto ii : std::views::iota(0, 3))
 		{
             devs.push_back(std::abs(img1.at<cv::Vec3b>(x, y)[ii] - img2.at<cv::Vec3b>(x, y)[ii]));
 		}
@@ -162,9 +162,9 @@ void Test()
 
 int main(int argc, char* argv[])
 {
-    const auto in = R"(F:\Cloth.png)";
-    const auto out = R"(F:\test.out.png)";
-    const auto lut = Lut::CubeLut::FromCubeFile(R"(F:\test.cube)");
+    const auto in = R"(Z:\Evil_Succubus.png)";
+    const auto out = R"(Z:\Evil_Succubus.out.png)";
+    const auto lut = Lut::CubeLut::FromCubeFile(R"(Z:\Koikatsu_Reverse.cube)");
 
     ApplyLut(in, out, lut);
 
