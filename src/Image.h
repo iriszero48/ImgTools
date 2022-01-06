@@ -32,16 +32,17 @@ namespace Image
     struct PixivRGBA : PixivRGB<T>
     {
         using Base = PixivRGB<T>;
+        using Type = T;
 
         TA A = AValue;
 
         using Base::PixivRGB;
 
-        explicit PixivRGBA(const T v, cosnt TA a) : R(v), G(v), B(v), A(a) {}
+        explicit PixivRGBA(const T v, const TA a) : Base(v), A(a) {}
 
-		PixivRGBA(const T& r, const T& g, const T& b, const TA& a) : R(r), G(g), B(b), A(a) {}
+		PixivRGBA(const T& r, const T& g, const T& b, const TA& a) : Base(r, g, b), A(a) {}
 
-		explicit PixivRGBA(const T (&arr) [3], const TA& a) : R(arr[0]), G(arr[1]), B(arr[2]), A(a) {}
+		explicit PixivRGBA(const T (&arr) [3], const TA& a) : Base(arr), A(a) {}
 
 		static const PixivRGBA<T>& Zero()
 		{
@@ -71,11 +72,6 @@ namespace Image
             return data[row * cols + col];
         }
     };
-    
-    class Reader
-    {
-        
-    };
 
     class Processor
     {
@@ -84,5 +80,10 @@ namespace Image
     public:
         Processor(/* args */);
         ~Processor();
-    };   
+    };
+
+    class Reader
+    {
+
+    };
 }

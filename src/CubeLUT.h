@@ -7,6 +7,8 @@
 #include <sstream>
 #include <filesystem>
 
+#include "Image.h"
+
 namespace Lut
 {
 	template <typename T>
