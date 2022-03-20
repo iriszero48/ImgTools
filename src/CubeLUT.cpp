@@ -2,26 +2,30 @@
 
 #include <sstream>
 
+namespace __Detail
+{
+	template<class... T> struct Visitor : T... { using T::operator()...; };
+}
+
 namespace Lut
 {
-    std::string CubeLut::ReadLine(std::ifstream& infile, char lineSeparator)
+    std::string CubeLut::ReadLine(std::ifstream& infile, const char lineSeparator)
     {
-        // Skip empty lines and comments 
-        const char CommentMarker = '#';
-        std::string textLine("");
-        while (textLine.size() == 0 || textLine[0] == CommentMarker)
+        constexpr char commentMarker = '#';
+        std::string textLine{};
+        while (textLine.empty() || textLine[0] == commentMarker)
         {
             if (infile.eof()) { status = LutState::PrematureEndOfFile; break; }
             getline(infile, textLine, lineSeparator);
             if (infile.fail()) { status = LutState::ReadError; break; }
         }
         return textLine;
-    } // ReadLine 
+    }
 
     CubeLut::Row CubeLut::ParseTableRow(const std::string& lineOfText)
     {
-        constexpr int N = 3;
-        float f[N];
+        constexpr int n = 3;
+        float f[n];
         std::istringstream line(lineOfText);
         for (float& i : f)
         {
@@ -33,7 +37,7 @@ namespace Lut
             }
         }
         return Row(f);
-    } // ParseTableRow 
+    }
 
     const CubeLut::TableType& CubeLut::GetTable() const
     {
@@ -60,29 +64,33 @@ namespace Lut
         }, table);
     }
 
+    uint64_t CubeLut::Length() const
+    {
+        return std::visit(__Detail::Visitor
+        {
+            [](const Lut::Table1D& t) { return t.Length(); },
+            [](const Lut::Table3D& t) { return t.Length(); }
+        }, table);
+    }
+
     CubeLut::LutState   CubeLut::LoadCubeFile(std::ifstream& infile)
     {
-        // Set defaults 
         status = LutState::OK;
         Title.clear();
         DomainMin = Row(0.0);
         DomainMax = Row(1.0);
 
-        // Read file data line by line 
-        const char NewlineCharacter = '\n';
-        char lineSeparator = NewlineCharacter;
+        constexpr char newlineCharacter = '\n';
+        char lineSeparator = newlineCharacter;
 
-        // sniff use of legacy lineSeparator 
-        const char CarriageReturnCharacter = '\r';
         for (int i = 0; i < 255; i++)
         {
-            char inc = infile.get();
-            if (inc == NewlineCharacter) break;
-            if (inc == CarriageReturnCharacter)
+	        const char inc = infile.get();
+            if (inc == newlineCharacter) break;
+            if (constexpr char carriageReturnCharacter = '\r'; inc == carriageReturnCharacter)
             {
-                if (infile.get() == NewlineCharacter) break;
-                lineSeparator = CarriageReturnCharacter;
-                //clog << "INFO: This file uses non-compliant line separator \\r (0x0D)" << endl;
+                if (infile.get() == newlineCharacter) break;
+                lineSeparator = carriageReturnCharacter;
                 break;
             }
             if (i > 250)
@@ -94,60 +102,55 @@ namespace Lut
         infile.seekg(0);
         infile.clear();
 
-        // read keywords 
-        int N, CntTitle, CntSize, CntMin, CntMax;
-        // each keyword to occur zero or one time 
-        N = CntTitle = CntSize = CntMin = CntMax = 0;
+        int cntTitle, cntSize, cntMin, cntMax;
+        int n = cntTitle = cntSize = cntMin = cntMax = 0;
 
         while (status == LutState::OK)
         {
-            long linePos = infile.tellg();
+	        const auto linePos = infile.tellg();
             std::string lineOfText = ReadLine(infile, lineSeparator);
             if (status != LutState::OK) break;
 
-            // Parse keywords and parameters 
             std::istringstream line(lineOfText);
             std::string keyword;
             line >> keyword;
 
             if ("+" < keyword && keyword < ":")
             {
-                // lines of table data come after keywords 
-                // restore stream pos to re-read line of data 
                 infile.seekg(linePos);
                 break;
             }
 
-            if (keyword == "TITLE" && CntTitle++ == 0) {
-	            const char QUOTE = '"';
+            if (keyword == "TITLE" && cntTitle++ == 0) {
+	            constexpr char quote = '"';
 	            char startOfTitle;
 	            line >> startOfTitle;
-	            if (startOfTitle != QUOTE) { status = LutState::TitleMissingQuote; break; }
-	            getline(line, Title, QUOTE);  // read to " 
+	            if (startOfTitle != quote) { status = LutState::TitleMissingQuote; break; }
+	            getline(line, Title, quote);
             }
-            else if (keyword == "DOMAIN_MIN" && CntMin++ == 0)
+            else if (keyword == "DOMAIN_MIN" && cntMin++ == 0)
             {
                 float domainMin[3];
 	            line >> domainMin[0] >> domainMin[1] >> domainMin[2];
                 DomainMin = Row(domainMin);
             }
-            else if (keyword == "DOMAIN_MAX" && CntMax++ == 0)
+            else if (keyword == "DOMAIN_MAX" && cntMax++ == 0)
             {
                 float domainMax[3];
 	            line >> domainMax[0] >> domainMax[1] >> domainMax[2];
                 DomainMax = Row(domainMax);
             }
-            else if (keyword == "LUT_1D_SIZE" && CntSize++ == 0)
+            else if (keyword == "LUT_1D_SIZE" && cntSize++ == 0)
             {
-	            line >> N;
-	            if (N < 2 || N > 65536) { status = LutState::LUTSizeOutOfRange; break; }
-                table = Table1D(N);
+	            line >> n;
+	            if (n < 2 || n > 65536) { status = LutState::LUTSizeOutOfRange; break; }
+                table = Table1D(n);
             }
-            else if (keyword == "LUT_3D_SIZE" && CntSize++ == 0)
+            else if (keyword == "LUT_3D_SIZE" && cntSize++ == 0)
             {
-	            line >> N;
-	            if (N < 2 || N > 256) { status = LutState::LUTSizeOutOfRange; break; }
-                table = Table3D(N);
+	            line >> n;
+	            if (n < 2 || n > 256) { status = LutState::LUTSizeOutOfRange; break; }
+                table = Table3D(n);
             }
             else
             {
@@ -160,15 +163,14 @@ namespace Lut
 	            status = LutState::ReadError;
             	break;
             }
-        } // read keywords 
+        }
 
-        if (status == LutState::OK && CntSize == 0) status = LutState::LUTSizeOutOfRange;
+        if (status == LutState::OK && cntSize == 0) status = LutState::LUTSizeOutOfRange;
 
         if (status == LutState::OK && (DomainMin.B >= DomainMax.B || DomainMin.G >= DomainMax.G
             || DomainMin.R >= DomainMax.R))
             status = LutState::DomainBoundsReversed;
 
-        // read lines of table data
         std::visit([&]<typename T0>(T0& tb)
             {
 	            using T = std::decay_t<T0>;
@@ -181,14 +183,13 @@ namespace Lut
 	            }
 	            else if constexpr (std::is_same_v<T, Table3D>)
 	            {
-                    for (int b = 0; b < N && status == LutState::OK; b++)
+                    for (int b = 0; b < n && status == LutState::OK; b++)
                     {
-                        for (int g = 0; g < N && status == LutState::OK; g++)
+                        for (int g = 0; g < n && status == LutState::OK; g++)
                         {
-                            for (int r = 0; r < N && status == LutState::OK; r++)
+                            for (int r = 0; r < n && status == LutState::OK; r++)
                             {
                                 tb.At(r, g, b) = ParseTableRow(ReadLine(infile, lineSeparator));
-
                             }
                         }
                     }
@@ -198,52 +199,49 @@ namespace Lut
                     throw std::runtime_error("non-exhaustive visitor!");
 	            }
             }, table);
-    	// read 3D LUT
         return status;
-    } // LoadCubeFile 
+    }
 
     CubeLut::LutState   CubeLut::SaveCubeFile(std::ofstream& outfile)
     {
-        if (status != LutState::OK) return status; // Write only good Cubes 
+        if (status != LutState::OK) return status;
 
-        // Write keywords 
-        const char SPACE = ' ';
-        const char QUOTE = '"';
+        constexpr char space = ' ';
+        constexpr char quote = '"';
 
-        if (!Title.empty()) outfile << "TITLE" << SPACE << QUOTE << Title << QUOTE << std::endl;
+        if (!Title.empty()) outfile << "TITLE" << space << quote << Title << quote << std::endl;
         outfile << "# Created by CubeLUT.cpp" << std::endl;
-        outfile << "DOMAIN_MIN" << SPACE << DomainMin.R << SPACE << DomainMin.G
-            << SPACE << DomainMin.B << std::endl;
-        outfile << "DOMAIN_MAX" << SPACE << DomainMax.R << SPACE << DomainMax.G
-            << SPACE << DomainMax.B << std::endl;
+        outfile << "DOMAIN_MIN" << space << DomainMin.R << space << DomainMin.G
+            << space << DomainMin.B << std::endl;
+        outfile << "DOMAIN_MAX" << space << DomainMax.R << space << DomainMax.G
+            << space << DomainMax.B << std::endl;
 
-        // Write LUT data
         std::visit([&]<typename T0>(const T0& tb)
         {
             using T = std::decay_t<T0>;
             if constexpr (std::is_same_v<T, Table1D>)
             {
-                const auto N = tb.Length();
-                outfile << "LUT_1D_SIZE" << SPACE << N << std::endl;
-                for (int i = 0; i < N && outfile.good(); i++)
+                const auto n = tb.Length();
+                outfile << "LUT_1D_SIZE" << space << n << std::endl;
+                for (int i = 0; i < n && outfile.good(); i++)
                 {
                     const auto [r, g, b] = tb.At(i);
-                    outfile << r << SPACE << g << SPACE << b << std::endl;
+                    outfile << r << space << g << space << b << std::endl;
                 }
             }
             else if constexpr (std::is_same_v<T, Table3D>)
             {
-            	const auto N = tb.Length();
-                outfile << "LUT_3D_SIZE" << SPACE << N << std::endl;
-                // NOTE that r loops fastest 
-                for (int b = 0; b < N && outfile.good(); b++)
+            	const auto n = tb.Length();
+                outfile << "LUT_3D_SIZE" << space << n << std::endl;
+
+                for (int b = 0; b < n && outfile.good(); b++)
                 {
-                    for (int g = 0; g < N && outfile.good(); g++)
+                    for (int g = 0; g < n && outfile.good(); g++)
                     {
-                        for (int r = 0; r < N && outfile.good(); r++)
+                        for (int r = 0; r < n && outfile.good(); r++)
                         {
                             const auto [rv, gv, bv] = tb.At(r, g, b);
-                            outfile << rv << SPACE << gv << SPACE << bv << std::endl;
+                            outfile << rv << space << gv << space << bv << std::endl;
                         }
                     }
                 }
@@ -253,34 +251,27 @@ namespace Lut
                 throw std::runtime_error("non-exhaustive visitor!");
             }
         }, table);
-    	// write 3D LUT 
 
         outfile.flush();
         return (outfile.good() ? LutState::OK : LutState::WriteError);
-    } // SaveCubeFile
+    }
 
     CubeLut CubeLut::FromCubeFile(const std::filesystem::path& file)
     {
         CubeLut cube;
         enum { OK = 0, ErrorOpenInFile = 100, ErrorOpenOutFile };
 
-        // Load a Cube 
         std::ifstream infile(file);
         if (!infile)
         {
             throw std::runtime_error("Could not open input file");
-            //std::cout << "Could not open input file " << cubeFileIn << std::endl;
-            //return ErrorOpenInFile;
         }
-        auto ret = cube.LoadCubeFile(infile);
+        const auto ret = cube.LoadCubeFile(infile);
 
         infile.close();
         if (ret != LutState::OK)
         {
             throw std::runtime_error("Could not parse the cube info in the input file.");
-            //std::cout << "Could not parse the cube info in the input file. Return code = "
-            //    << (int)ret << std::endl;
-            //return theCube.status;
         }
         return cube;
     }

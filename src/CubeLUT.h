@@ -7,11 +7,10 @@
 #include <sstream>
 #include <filesystem>
 
-#include "Image.h"
 
 namespace Lut
 {
-	template <typename T>
+	template <typename T = uint8_t>
 	struct ColorRgb
 	{
 		T R;
@@ -26,12 +25,6 @@ namespace Lut
 
 		template <typename Arr>
 		explicit ColorRgb(const Arr (&arr) [3]) : R(arr[0]), G(arr[1]), B(arr[2]) {}
-
-		static const ColorRgb<T>& Zero()
-		{
-			static ColorRgb<T> zero(0);
-			return zero;
-		}
 	};
 
 	template <typename Impl>
@@ -49,9 +42,26 @@ namespace Lut
 			return static_cast<Impl*>(this)->At(std::forward<Args>(args)...);
 		}
 
-		decltype(auto) Length()
+		size_t Length()
 		{
 			return static_cast<Impl*>(this)->Length();
+		}
+
+		template <typename ...Args>
+		decltype(auto) SafeAt(Args&&...args)
+		{
+			return static_cast<Impl*>(this)->SafeAt(std::forward<Args>(args)...);
+		}
+
+		template <typename ...Args>
+		decltype(auto) SafeAt(Args&&...args) const
+		{
+			return static_cast<Impl*>(this)->SafeAt(std::forward<Args>(args)...);
+		}
+
+		decltype(auto) GetRawData() const
+		{
+			return static_cast<Impl*>(this)->GetRawData();
 		}
 	};
 
@@ -61,18 +71,23 @@ namespace Lut
 
 		Table1D() = default;
 
-		explicit Table1D(const uint64_t elemSize) : data(elemSize) {}
+		explicit Table1D(const size_t elemSize) : data(elemSize) {}
 
-		[[nodiscard]] uint64_t Length() const { return data.size(); }
+		[[nodiscard]] size_t Length() const { return data.size(); }
 
-		ElemType& At(const uint64_t i)
+		ElemType& At(const size_t i)
 		{
 			return data[i];
 		}
 
-		[[nodiscard]] const ElemType& At(const uint64_t i) const
+		[[nodiscard]] const ElemType& At(const size_t i) const
 		{
 			return data.at(i);
+		}
+
+		[[nodiscard]] const std::vector<ElemType>& GetRawData() const
+		{
+			return data;
 		}
 
 	private:
@@ -83,25 +98,30 @@ namespace Lut
 	{
 		using ElemType = ColorRgb<float>;
 
-		explicit Table3D(const uint64_t elemSize): data(elemSize * elemSize * elemSize), elemSize(elemSize) {}
+		explicit Table3D(const size_t elemSize): data(elemSize * elemSize * elemSize), elemSize(elemSize) {}
 
-		[[nodiscard]] uint64_t Length() const { return elemSize; }
+		[[nodiscard]] size_t Length() const { return elemSize; }
 
-		ElemType& At(const uint64_t r, const uint64_t g, const uint64_t b)
+		ElemType& At(const size_t r, const size_t g, const size_t b)
 		{
 			return data[Pos(r, g, b)];
 		}
 
-		[[nodiscard]] const ElemType& At(const uint64_t r, const uint64_t g, const uint64_t b) const
+		[[nodiscard]] const ElemType& At(const size_t r, const size_t g, const size_t b) const
 		{
-			return data.at(Pos(r, g, b));
+			return data[Pos(r, g, b)];
+		}
+
+		[[nodiscard]] const std::vector<ElemType>& GetRawData() const
+		{
+			return data;
 		}
 		
 	private:
 		std::vector<ElemType> data{};
-		uint64_t elemSize{};
+		size_t elemSize{};
 
-		[[nodiscard]] uint64_t Pos(const uint64_t r, const uint64_t g, const uint64_t b) const
+		[[nodiscard]] size_t Pos(const size_t r, const size_t g, const size_t b) const
 		{
 			return r * elemSize * elemSize + g * elemSize + b;
 		}
@@ -110,7 +130,7 @@ namespace Lut
 	class CubeLut
 	{
 	public:
-		using Row = Table3D::ElemType;
+		using Row = ColorRgb<float>;
 		using TableType = std::variant<Table1D, Table3D>;
 
 		enum class Dim { _1D, _3D };
@@ -131,6 +151,7 @@ namespace Lut
 
 		[[nodiscard]] const TableType& GetTable() const;
 		[[nodiscard]] Dim GetDim() const;
+		[[nodiscard]] uint64_t Length() const;
 
 		LutState LoadCubeFile(std::ifstream& infile);
 		LutState SaveCubeFile(std::ofstream& outfile);
