@@ -14,8 +14,11 @@ SamplerState TexSampler : register(s0);
 
 RWTexture2D<float4> BufferOut : register(u0);
 
-[numthreads(32, 32, 1)]
-void GenerateNormalTexture(uint3 GID : SV_GroupID, uint3 DTID : SV_DispatchThreadID, uint3 GTID : SV_GroupThreadID, int GI : SV_GroupIndex)
+[numthreads(32, 32, 1)] void GenerateNormalTexture(uint3 GID
+                                                   : SV_GroupID, uint3 DTID
+                                                   : SV_DispatchThreadID, uint3 GTID
+                                                   : SV_GroupThreadID, int GI
+                                                   : SV_GroupIndex)
 {
     ShaderData d = Data[0];
 
@@ -23,11 +26,11 @@ void GenerateNormalTexture(uint3 GID : SV_GroupID, uint3 DTID : SV_DispatchThrea
     float stepH = 1. / d.Height;
     float2 pos = DTID.xy / float2(d.Width, d.Height);
 
-    float d0 = abs(BufferIn.SampleLevel(TexSampler, pos                         , 0).r);
-    float d1 = abs(BufferIn.SampleLevel(TexSampler, pos + float2( stepW,      0), 0).r);
-    float d2 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(-stepW,      0), 0).r);
-    float d3 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(     0, -stepH), 0).r);
-    float d4 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(     0,  stepH), 0).r);
+    float d0 = abs(BufferIn.SampleLevel(TexSampler, pos, 0).r);
+    float d1 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(stepW, 0), 0).r);
+    float d2 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(-stepW, 0), 0).r);
+    float d3 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(0, -stepH), 0).r);
+    float d4 = abs(BufferIn.SampleLevel(TexSampler, pos + float2(0, stepH), 0).r);
 
     float dx = ((d2 - d0) + (d0 - d1)) * 0.5;
     float dy = ((d4 - d0) + (d0 - d3)) * 0.5;
