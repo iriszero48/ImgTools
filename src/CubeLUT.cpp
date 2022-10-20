@@ -295,7 +295,7 @@ namespace Lut
             ErrorOpenOutFile
         };
 
-        std::ifstream infile(file);
+        std::ifstream infile(file, std::ios::binary | std::ios::in);
         if (!infile)
         {
             throw std::runtime_error("Could not open input file");

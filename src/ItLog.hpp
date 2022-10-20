@@ -69,8 +69,8 @@ static Logger<LogMsg> Log{};
 #define LogNone(...) ItLog(LogLevel::None, __VA_ARGS__)
 #define LogErr(...) ItLog(LogLevel::Error, __VA_ARGS__)
 #define LogWarn(...) ItLog(LogLevel::Warn, __VA_ARGS__)
-#define LogLog(...) ItLog(LogLevel::Log, __VA_ARGS__)
 #define LogInfo(...) ItLog(LogLevel::Info, __VA_ARGS__)
+#define LogVerb(...) ItLog(LogLevel::Verb, __VA_ARGS__)
 #define LogDebug(...) ItLog(LogLevel::Debug, __VA_ARGS__)
 
 static void LogHandle()
@@ -79,8 +79,8 @@ static void LogHandle()
         {LogLevel::None, Console::Color::White},
         {LogLevel::Error, Console::Color::Red},
         {LogLevel::Warn, Console::Color::Yellow},
-        {LogLevel::Log, Console::Color::White},
-        {LogLevel::Info, Console::Color::Gray},
+        {LogLevel::Info, Console::Color::White},
+        {LogLevel::Verb, Console::Color::Gray},
         {LogLevel::Debug, Console::Color::Blue}};
 
     while (true)

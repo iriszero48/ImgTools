@@ -321,7 +321,7 @@ private:
 		SetConsoleOutputCP(65001);
 		ShowWindow(GetConsoleWindow(), showConsole);
 
-		LogLog(NormU8(Text::NowLoading()));
+		LogInfo(NormU8(Text::NowLoading()));
 
 #if defined(DEBUG) || defined(_DEBUG)
 		LogInfo(nlohmann::json::meta().dump(4));
@@ -431,7 +431,7 @@ private:
 		if (!exists(settingsPath))
 		{
 			const auto lang = GetUserLanguage();
-			LogLog("get lang [{}]", lang);
+			LogInfo("get lang [{}]", lang);
 			if (lang.starts_with(L"zh-"))
 			{
 				settingData.Language = Text::Language::Chinese;
@@ -450,6 +450,9 @@ private:
 #pragma endregion Init
 
 #pragma region Update
+	std::optional<decltype(std::chrono::high_resolution_clock::now())> lastRenderTime{};
+	uint64_t sleepMillTime = 0;
+
 	void Update()
 	{
 		UpdateImgui();
@@ -498,7 +501,7 @@ private:
 		ImGui::NewFrame();
 	}
 
-	void UpdateRender() const
+	void UpdateRender()
 	{
 		ImGui::Render();
 
@@ -518,6 +521,15 @@ private:
 		}
 
 		D3D11SwapChain->Present(settingData.VSync, 0);
+
+		const auto unlocked = settingData.FpsLimit > 360;
+		const auto vsync = settingData.VSync;
+		if (!unlocked && !vsync && lastRenderTime.has_value())
+		{
+			std::this_thread::sleep_until(*lastRenderTime + std::chrono::nanoseconds(static_cast<uint64_t>(1. / settingData.FpsLimit * 1000. * 1000. * 1000. / 2.)));
+			//std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+		lastRenderTime = std::chrono::high_resolution_clock::now();
 	}
 
 	void UpdateUi()
@@ -1546,11 +1558,11 @@ public:
 
 	void Run()
 	{
-		decltype(std::chrono::high_resolution_clock::now()) lastFrameTime{};
+		//decltype(std::chrono::high_resolution_clock::now()) lastFrameTime{};
 		while (!done)
 		{
-			const auto unlocked = settingData.FpsLimit > 360;
-			if (!unlocked) lastFrameTime = std::chrono::high_resolution_clock::now();
+			//const auto unlocked = settingData.FpsLimit > 360;
+			//if (!unlocked) lastFrameTime = std::chrono::high_resolution_clock::now();
 
 			MSG msg;
 			while (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
@@ -1565,9 +1577,9 @@ public:
 
 			Update();
 
-			if (!unlocked) 
-				if (const auto exp = lastFrameTime + std::chrono::milliseconds(static_cast<int64_t>(1. / settingData.FpsLimit * 1000.));
-					exp > std::chrono::high_resolution_clock::now()) std::this_thread::sleep_until(exp);
+			//if (!unlocked) 
+			//	if (const auto exp = lastFrameTime + std::chrono::milliseconds(static_cast<int64_t>(1. / settingData.FpsLimit * 1000.));
+			//		exp > std::chrono::high_resolution_clock::now()) std::this_thread::sleep_until(exp);
 		}
 
 		std::error_code ec;

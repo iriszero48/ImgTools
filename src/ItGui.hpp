@@ -218,12 +218,12 @@ namespace GUI
     {
         bool changed = false;
 
-        if (ImGui::BeginCombo(str, Enum::ToString(enumVal).c_str()))
+        if (ImGui::BeginCombo(str, std::string(Enum::ToString(enumVal)).c_str()))
         {
             for (auto v : Enum::Values<EnumType>())
             {
                 const auto selected = (enumVal == v);
-                if (ImGui::Selectable(Enum::ToString(v).c_str(), selected))
+                if (ImGui::Selectable(std::string(Enum::ToString(v)).c_str(), selected))
                 {
                     enumVal = v;
                     changed = true;

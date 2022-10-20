@@ -13,11 +13,7 @@ SamplerState TexSampler : register(s0);
 
 RWTexture2D<float4> BufferOut : register(u0);
 
-[numthreads(32, 32, 1)] void LUT3D(uint3 GID
-                                   : SV_GroupID, uint3 DTID
-                                   : SV_DispatchThreadID, uint3 GTID
-                                   : SV_GroupThreadID, int GI
-                                   : SV_GroupIndex)
+[numthreads(32, 32, 1)] void LUT3D(uint3 DTID : SV_DispatchThreadID)
 {
     ShaderData d = Data[0];
     float4 p = BufferIn[DTID.xy].rgba;
