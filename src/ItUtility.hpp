@@ -790,3 +790,37 @@ namespace views
     details::custom_take_range_adaptor custom_take;
 }
 #endif
+
+std::vector<std::uint8_t> Base64Decode(std::string str)
+{
+    static const std::string Table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    const auto ret = std::ranges::remove_if(str, [](char c)
+    {
+        return !(Table.contains(c) || c == '=');
+    });
+    str.erase(ret.begin(), ret.end());
+
+    if (str.length() % 4 != 0)
+    {
+        throw Ex(ImgToolsException, "str.length() % 4 != 0");
+    }
+
+    return str
+        | ranges::views::chunk(4)
+        | ranges::views::transform([](const auto &x)
+        {
+            static const auto find = [](char c)
+            {
+                return c == '=' ? 0 : Table.find(c);
+            };
+            std::uint8_t a = find(x[0]);
+            std::uint8_t b = find(x[1]);
+            std::uint8_t c = find(x[2]);
+            std::uint8_t d = find(x[3]);
+
+            return std::array{(a << 2) | (b >> 4), (b << 4) | (c >> 2), (c << 6) | d};
+        })
+        | ranges::views::join
+        | ranges::to<std::vector<std::uint8_t>>();
+}

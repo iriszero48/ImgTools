@@ -477,6 +477,24 @@ namespace Text
         MakeCnText("无限制");
     }
 
+    MakeFunc(Base64ToImage)
+    {
+        MakeEnText("Base64 To Image");
+        MakeCnText("Base64 -> 图片");
+    }
+
+    MakeFunc(Decode)
+    {
+        MakeEnText("Decode");
+        MakeCnText("解码");
+    }
+
+    MakeFunc(Reset)
+    {
+        MakeEnText("Reset");
+        MakeCnText("重置");
+    }
+
 #undef MakeFunc
 #undef MakeText
 

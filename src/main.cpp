@@ -112,6 +112,7 @@ class ImgTools
 	bool showChangelog = false;
 	bool showAbout = false;
 	[[maybe_unused]] bool showDocument = false;
+	bool showBase64ToImage = false;
 
 	// proc status
 	ImageFormat imgFormat = ImageFormat::png;
@@ -527,7 +528,6 @@ private:
 		if (!unlocked && !vsync && lastRenderTime.has_value())
 		{
 			std::this_thread::sleep_until(*lastRenderTime + std::chrono::nanoseconds(static_cast<uint64_t>(1. / settingData.FpsLimit * 1000. * 1000. * 1000. / 2.)));
-			//std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 		lastRenderTime = std::chrono::high_resolution_clock::now();
 	}
@@ -1339,6 +1339,7 @@ private:
 		{
 			ShowTopMenuImplFile();
 			ShowTopMenuImplWindow();
+			ShowTopMenuImplTools();
 			ShowTopMenuImplHelp();
 
 			ImGui::EndMainMenuBar();
@@ -1470,6 +1471,87 @@ private:
 
 			ImGui::EndMenu();
 		}
+	}
+
+	void ShowTopMenuImplTools()
+	{
+		if (ImGui::BeginMenu(Text::Tools()))
+		{
+			if (ImGui::MenuItem(Text::Base64ToImage(), nullptr, showBase64ToImage))
+				showBase64ToImage = !showBase64ToImage;
+
+			ImGui::EndMenu();
+		}
+		ShowTopMenuImplToolsImplBase64ToImage();
+	}
+
+	std::string base64Buf{};
+	std::optional<ImageView> base64Img{};
+
+	void ShowTopMenuImplToolsImplBase64ToImage()
+	{
+		if (!showBase64ToImage)
+			return;
+
+		ImGui::Begin(Text::Base64ToImage(), &showBase64ToImage);
+		
+		ImGui::InputTextMultiline("Base64", &base64Buf);
+
+		if (ImGui::Button(Text::Decode()))
+		{
+			try
+			{
+				const auto data = Base64Decode(base64Buf);
+				base64Img = D3D11::LoadTextureFromFile(D3D11Dev.Get(), Image::ImageFile(data.data(), data.size()));
+			}
+			catch (const std::exception &ex)
+			{
+				LogErr(ex.what());
+				GUI::ShowError(String::ToWString(ex.what()));
+			}
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(Text::Reset()))
+		{
+			base64Buf = {};
+			base64Img.reset();
+		}
+
+		const auto emptyImage = !base64Img.has_value();
+#if 0
+		ImGui::SameLine();
+		if (emptyImage) ImGui::BeginDisabled();
+		if (ImGui::Button(Text::Save()))
+		{
+
+		}
+		if (emptyImage) ImGui::EndDisabled();
+#endif
+
+		if (base64Img.has_value())
+		{
+			const auto imgW = base64Img->Width;
+				const auto imgH = base64Img->Height;
+
+				ImGui::Text("%d x %d", imgW, imgH);
+
+				if (imgW && imgH)
+				{
+					const auto size = ImGui::GetContentRegionAvail();
+					auto h = size.y;
+					auto w = h * static_cast<float>(imgW) / static_cast<float>(imgH);
+					if (w > size.x)
+					{
+						w = size.x;
+						h = w * static_cast<float>(imgH) / static_cast<float>(imgW);
+					}
+					if (w <= 0.0001f || h <= 0.0001f)
+						ImGui::SetWindowSize(ImVec2(400, 400));
+					ImGui::Image(base64Img->SRV.Get(), ImVec2(w, h));
+				}
+		}
+
+		ImGui::End();
 	}
 
 	void ShowTopMenuImplHelp()
